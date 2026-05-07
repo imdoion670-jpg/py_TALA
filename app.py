@@ -14,7 +14,7 @@ st.set_page_config(
 # -----------------------------
 
 BEGINNER = [
-    "print('Hello World')",
+    """print('Hello World')""",
 
     """x = 10
 print(x)""",
@@ -56,7 +56,7 @@ LEVELS = {
 }
 
 # -----------------------------
-# 세션 상태 초기화
+# 세션 상태
 # -----------------------------
 
 if "difficulty" not in st.session_state:
@@ -73,47 +73,68 @@ if "start_time" not in st.session_state:
 if "finished" not in st.session_state:
     st.session_state.finished = False
 
-if "username" not in st.session_state:
-    st.session_state.username = ""
-
 # -----------------------------
-# 사이드바
-# -----------------------------
-
-st.sidebar.title("설정")
-
-# 이름 입력
-username = st.sidebar.text_input(
-    "이름",
-    value=st.session_state.username
-)
-
-st.session_state.username = username
-
-# 난이도 선택
-difficulty = st.sidebar.selectbox(
-    "난이도",
-    list(LEVELS.keys()),
-    index=list(LEVELS.keys()).index(st.session_state.difficulty)
-)
-
-# 난이도 변경 감지
-if difficulty != st.session_state.difficulty:
-    st.session_state.difficulty = difficulty
-    st.session_state.target_code = random.choice(
-        LEVELS[difficulty]
-    )
-    st.session_state.start_time = None
-    st.session_state.finished = False
-
-# -----------------------------
-# 메인 화면
+# 상단 UI
 # -----------------------------
 
 st.title("🐍 Python 코드 타자 연습")
 
+col1, col2, col3 = st.columns([2, 2, 1])
+
+# 이름 입력
+with col1:
+    username = st.text_input(
+        "이름 입력",
+        placeholder="이름을 입력하세요"
+    )
+
+# 난이도 선택
+with col2:
+
+    difficulty = st.selectbox(
+        "난이도 선택",
+        ["초급", "중급", "고급"],
+        index=["초급", "중급", "고급"].index(
+            st.session_state.difficulty
+        )
+    )
+
+    # 난이도 변경 감지
+    if difficulty != st.session_state.difficulty:
+
+        st.session_state.difficulty = difficulty
+
+        st.session_state.target_code = random.choice(
+            LEVELS[difficulty]
+        )
+
+        st.session_state.finished = False
+        st.session_state.start_time = None
+
+        st.rerun()
+
+# 다음 문제 버튼
+with col3:
+    st.write("")
+    st.write("")
+
+    if st.button("🎲 다음 문제"):
+
+        st.session_state.target_code = random.choice(
+            LEVELS[st.session_state.difficulty]
+        )
+
+        st.session_state.finished = False
+        st.session_state.start_time = None
+
+        st.rerun()
+
+# -----------------------------
+# 안내
+# -----------------------------
+
 if username:
-    st.write(f"안녕하세요, **{username}** 님 👋")
+    st.success(f"{username} 님 환영합니다 👋")
 
 st.markdown(
     f"### 현재 난이도: `{st.session_state.difficulty}`"
@@ -121,7 +142,7 @@ st.markdown(
 
 st.write("아래 Python 코드를 그대로 입력하세요.")
 
-# 문제 표시
+# 문제 코드
 st.code(
     st.session_state.target_code,
     language="python"
@@ -135,32 +156,35 @@ st.divider()
 
 user_code = st_ace(
     value="",
-    placeholder="Python 코드를 입력하세요...",
     language="python",
     theme="monokai",
     key=f"ace_{st.session_state.target_code}",
-    height=300,
+    height=350,
     font_size=16,
     tab_size=4,
     wrap=True,
-    auto_update=True
+    auto_update=True,
+    placeholder="여기에 Python 코드를 입력하세요..."
 )
 
+# -----------------------------
 # 시작 시간
+# -----------------------------
+
 if user_code and st.session_state.start_time is None:
     st.session_state.start_time = time.time()
 
 # -----------------------------
-# 정답 체크
+# 정답 판정
 # -----------------------------
 
 if user_code.strip() == st.session_state.target_code.strip():
 
     elapsed = time.time() - st.session_state.start_time
 
-    total_chars = len(st.session_state.target_code)
+    chars = len(st.session_state.target_code)
 
-    correct_chars = sum(
+    correct = sum(
         1 for a, b in zip(
             user_code,
             st.session_state.target_code
@@ -168,7 +192,7 @@ if user_code.strip() == st.session_state.target_code.strip():
         if a == b
     )
 
-    accuracy = (correct_chars / total_chars) * 100
+    accuracy = (correct / chars) * 100
 
     words = len(
         st.session_state.target_code.split()
@@ -178,38 +202,10 @@ if user_code.strip() == st.session_state.target_code.strip():
 
     st.success("🎉 정답입니다!")
 
-    col1, col2, col3 = st.columns(3)
+    c1, c2, c3 = st.columns(3)
 
-    col1.metric(
-        "⏱ 시간",
-        f"{elapsed:.2f}초"
-    )
+    c1.metric("⏱ 시간", f"{elapsed:.2f}초")
+    c2.metric("⚡ 속도", f"{wpm:.2f} WPM")
+    c3.metric("🎯 정확도", f"{accuracy:.2f}%")
 
-    col2.metric(
-        "⚡ 속도",
-        f"{wpm:.2f} WPM"
-    )
-
-    col3.metric(
-        "🎯 정확도",
-        f"{accuracy:.2f}%"
-    )
-
-    st.session_state.finished = True
-
-# -----------------------------
-# 다음 문제 버튼
-# -----------------------------
-
-if st.session_state.finished:
-
-    if st.button("다음 문제"):
-
-        st.session_state.target_code = random.choice(
-            LEVELS[st.session_state.difficulty]
-        )
-
-        st.session_state.start_time = None
-        st.session_state.finished = False
-
-        st.rerun()
+    st.balloons()
